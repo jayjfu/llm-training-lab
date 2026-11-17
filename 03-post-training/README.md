@@ -45,13 +45,13 @@ TODO
 We only include all the results on six tasks of LLM learderboard v2 here. Additional results on other benchmarks and custom evaluations 
 are available in the [Evaluation Section](../04-evaluation/README.md).  
 
-| Stage      | Model                  | IFEval | MuSR  | MATH Lvl-5 | BBH   | MMLU-Pro | GPQA  | Avg   |
-|------------|------------------------|--------|-------|------------|-------|----------|-------|-------|
-| Base       | Qwen/Qwen3.5-0.8B-Base | 25.88  | 38.10 | 7.33       | 40.72 | 24.84    | 29.19 | 27.68 |
-| SFT        |                        | 0      | 0     | 0          | 0     | 0        | 0     | 0     |
-| Preference |                        | 0      | 0     | 0          | 0     | 0        | 0     | 0     |
-| RL         |                        | 0      | 0     | 0          | 0     | 0        | 0     | 0     |
-| Instruct   | Qwen/Qwen3.5-0.8B      | 53.97  | 42.72 | 12.99      | 33.76 | 16.27    | 26.01 | 30.95 |
+| Stage          | Model                  | IFEval         | MuSR          | MATH Lvl-5    | BBH           | MMLU-Pro      | GPQA          | Avg           |
+|----------------|------------------------|----------------|---------------|---------------|---------------|---------------|---------------|---------------|
+| **Base**       | Qwen/Qwen3.5-0.8B-Base | 25.88          | 38.10         | 7.33          | 40.72         | 24.84         | 29.19         | 27.68         |
+| **SFT**        |                        | 0              | 0             | 0             | 0             | 0             | 0             | 0             |
+| **RL**         |                        | 0              | 0             | 0             | 0             | 0             | 0             | 0             |
+| **Preference** |                        | 0              | 0             | 0             | 0             | 0             | 0             | 0             |
+| **Instruct**   | Qwen/Qwen3.5-0.8B      | 53.97 (+28.09) | 42.72 (+4.62) | 12.99 (+5.66) | 33.76 (-6.96) | 16.27 (-8.57) | 26.01 (-3.18) | 30.95 (+3.27) |
 
 ## Benchmarks
 TODO

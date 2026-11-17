@@ -66,6 +66,6 @@ if [[ -d "${CKPTS_ROOT}" ]]; then
     [[ -d "${sft_dir}" ]] || continue # skip if not a directory
 
     name=$(basename "${sft_dir}")
-    eval_all_tasks "${sft_dir}" "sft_${name}" "true"
+    eval_all_tasks "${sft_dir}/final" "sft_${name}" "true"
   done
 fi

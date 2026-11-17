@@ -1,12 +1,23 @@
-# All You Need for LLM Training
+# LLM Training Lab
 
-### This repo aims to cover what you need to know about LLM pretraining, post-training, and evaluation, plus a tracker of frontier models.
+### A hands-on lab for building, running, and comparing every stage of LLM training: pretraining, midtraining, post-training, evaluation, and optimization, plus a tracker of frontier models.
 
 *(Work in Progress: This repository is currently under active development.)*
 
 ## Introduction
 
-TODO
+Every stage of the LLM pipeline is implemented here as runnable code, then used as a testbed: swap one component, rerun, and measure what changes.
+
+- **Build:** minimal, readable implementations of each stage, from a tokenizer to GRPO.
+- **Experiment:** controlled ablations on one component at a time, with results logged next to the code.
+- **Compare:** deep dives that contrast methods, papers, and frontier model reports.
+
+### Lab Roadmap
+- [x] Prototype: end-to-end mini pipeline (tokenizer → pretrain → SFT → RL → eval)
+- [ ] Baselines: a stronger reference setup for each stage, with logged results
+- [ ] Ablations: architecture, optimizers, schedules, data mixtures, hyperparameters
+- [ ] Comparisons: SFT vs. preference optimization vs. RL vs. distillation; inference and training efficiency techniques
+- [ ] Deep research: write-ups that connect experiment results with papers and frontier tech reports
 
 ### Prototype
 **Model Architecture:** A mini GPT-2 (inspired by nanochat).
@@ -63,6 +74,16 @@ TODO:
 TODO:
 - SFT, preference optimization, RL, distillation
 
+**Results:**  
+
+| Stage          | Model                  | IFEval         | MuSR          | MATH Lvl-5    | BBH           | MMLU-Pro      | GPQA          | Avg           |
+|----------------|------------------------|----------------|---------------|---------------|---------------|---------------|---------------|---------------|
+| **Base**       | Qwen/Qwen3.5-0.8B-Base | 25.88          | 38.10         | 7.33          | 40.72         | 24.84         | 29.19         | 27.68         |
+| **SFT**        |                        | 0              | 0             | 0             | 0             | 0             | 0             | 0             |
+| **RL**         |                        | 0              | 0             | 0             | 0             | 0             | 0             | 0             |
+| **Preference** |                        | 0              | 0             | 0             | 0             | 0             | 0             | 0             |
+| **Instruct**   | Qwen/Qwen3.5-0.8B      | 53.97 (+28.09) | 42.72 (+4.62) | 12.99 (+5.66) | 33.76 (-6.96) | 16.27 (-8.57) | 26.01 (-3.18) | 30.95 (+3.27) |
+
 ## Evaluation
 Run a full local evaluation suite with Inspect AI and vLLM:
 ```bash
@@ -90,5 +111,5 @@ Tokenizers, distributed training...
 
 - epfml/llm-baselines: [GitHub](https://github.com/epfml/llm-baselines)
 - labmlai/annotated_deep_learning_paper_implementations: [GitHub](https://github.com/labmlai/annotated_deep_learning_paper_implementations)
-- - karpathy/nanochat: [GitHub](https://github.com/karpathy/nanochat)
+- karpathy/nanochat: [GitHub](https://github.com/karpathy/nanochat)
 - allenai/OLMo-core: [GitHub](https://github.com/allenai/OLMo-core/)

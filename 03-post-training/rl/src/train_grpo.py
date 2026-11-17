@@ -43,21 +43,6 @@ def make_prompt(ex):
 
 dataset = filtered.map(make_prompt, remove_columns=filtered.column_names)
 
-def accuracy_reward(completions, ground_truth):
-    rewards = []
-    for comp, gt in zip(completions, ground_truth):
-        pred = extract_boxed(comp)
-        rewards.append(1.0 if pred == gt.strip() else 0.0)
-    return rewards
-
-def format_reward(completions):
-    return [0.5 if "\\boxed{" in c else 0.0 for c in completions]
-
-def compute_rewards(completions, ground_truths):
-    acc = accuracy_reward(completions, ground_truths)
-    fmt = format_reward(completions)
-    return [a + f for a, f in zip(acc, fmt)]
-
 tokenizer = AutoTokenizer.from_pretrained(MODEL)
 if tokenizer.pad_token is None:
     tokenizer.pad_token = tokenizer.eos_token
@@ -79,17 +64,20 @@ scheduler = get_cosine_schedule_with_warmup(
     num_training_steps=total_steps,
 )
 
-def get_logprobs(model, input_ids, attention_mask):
-    logits = model(input_ids=input_ids, attention_mask=attention_mask).logits
-    shift_logits = logits[:, :-1, :].contiguous()
-    shift_labels = input_ids[:, 1:].contiguous()
+def accuracy_reward(completions, ground_truth):
+    rewards = []
+    for comp, gt in zip(completions, ground_truth):
+        pred = extract_boxed(comp)
+        rewards.append(1.0 if pred == gt.strip() else 0.0)
+    return rewards
 
-    token_logps = -F.cross_entropy(
-        shift_logits.view(-1, shift_logits.size(-1)),
-        shift_labels.view(-1),
-        reduction="none",
-    ).view(shift_logits.size(0), -1)
-    return token_logps
+def format_reward(completions):
+    return [0.5 if "\\boxed{" in c else 0.0 for c in completions]
+
+def compute_rewards(completions, ground_truths):
+    acc = accuracy_reward(completions, ground_truths)
+    fmt = format_reward(completions)
+    return [a + f for a, f in zip(acc, fmt)]
 
 def compute_advantages(rewards, num_generations, eps=1e-8):
     rewards = torch.tensor(rewards, dtype=torch.float32, device=model.device)
@@ -134,6 +122,18 @@ def rollout(model, tokenizer, prompts, num_generations, max_new_tokens, temperat
     model.train()
     return all_completions, all_full_ids, all_prompt_lens, all_completion_lens
 
+def get_logprobs(model, input_ids, attention_mask):
+    logits = model(input_ids=input_ids, attention_mask=attention_mask).logits
+    shift_logits = logits[:, :-1, :].contiguous()
+    shift_labels = input_ids[:, 1:].contiguous()
+
+    token_logps = -F.cross_entropy(
+        shift_logits.view(-1, shift_logits.size(-1)),
+        shift_labels.view(-1),
+        reduction="none",
+    ).view(shift_logits.size(0), -1)
+    return token_logps
+
 def grpo_loss(token_logps, old_logps, ref_token_logps, advantages, completion_mask, beta=0.04, clip_eps=0.2):
     ratio = torch.exp(token_logps - old_logps)
     clipped_ratio = torch.clamp(ratio, 1.0 - clip_eps, 1.0 + clip_eps)
@@ -159,7 +159,6 @@ def grpo_loss(token_logps, old_logps, ref_token_logps, advantages, completion_ma
 dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True, drop_last=True)
 
 for epoch in range(EPOCHS):
-    model.train()
     pbar = tqdm(dataloader, desc=f"Epoch {epoch + 1}/{EPOCHS}")
 
     for batch in pbar:
