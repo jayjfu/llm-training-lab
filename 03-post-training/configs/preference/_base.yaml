@@ -1,8 +1,8 @@
 stage: preference
-model: ckpts/sft_full_lr2e5/final  # same start as GRPO
+model: ckpts/sft_full_lr2e5/final
 dataset: DigitalLearningGmbH/MATH-lighteval
 levels: [Level 1, Level 2, Level 3, Level 4, Level 5]
-pairs:  # on-policy samples with GRPO's sampling settings, scored by GRPO's reward
+pairs:
   name: math_sft_full_lr2e5
   num_generations: 4
   temperature: 0.9

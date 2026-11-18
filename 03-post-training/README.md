@@ -32,7 +32,7 @@ python src/sft_trl.py --configs configs/sft/*.yaml [--resume]
 ```
 
 ## Preference
-We train DPO from the SFT checkpoint on the MATH train split. Pairs come from the SFT model with GRPO's sampling settings and are scored by GRPO's reward.
+We train DPO from the SFT checkpoint on the MATH train split. It shares the sampling settings and reward with RL, so the two are comparable.
 ```bash
 python src/make_pairs.py --configs configs/preference/dpo_math.yaml
 python src/dpo_trl.py --configs configs/preference/dpo_trl_math.yaml
@@ -40,7 +40,7 @@ python src/dpo.py --configs configs/preference/dpo_math.yaml
 ```
 
 ## RL
-We train GRPO from the SFT checkpoint on the MATH train split. The TRL and from-scratch versions use matching configs.
+We train GRPO from the SFT checkpoint on the MATH train split.
 ```bash
 python src/grpo_trl.py --configs configs/rl/grpo_trl_math*.yaml
 python src/grpo.py --configs configs/rl/grpo_math.yaml
@@ -66,12 +66,12 @@ The table shows the best run per stage on Open LLM Leaderboard v2. All runs are 
 <!-- results:end -->
 
 ## Benchmarks
-1. Coding: TODO.
-2. Agentic: IFEval.
+1. Coding: TODO: Add HumanEval+ and MBPP+, and later LiveCodeBench.
+2. Agentic: We use IFEval. TODO: Add IFBench and BFCL.
 3. Reasoning, knowledge and multimodal:
-   - Reasoning: MuSR, MATH Lvl-5, BBH.
-   - Knowledge: MMLU-Pro, GPQA.
-   - Multimodal: TODO.
+   - Reasoning: We use MuSR, MATH Lvl-5 and BBH. TODO: Add MATH-500 and GSM8K.
+   - Knowledge: We use MMLU-Pro and GPQA. TODO: Add MMLU-Redux.
+   - Multimodal: TODO: Add MMMU, MathVista (mini) and OCRBench.
 4. Cybersecurity: TODO.
 
 ## Others

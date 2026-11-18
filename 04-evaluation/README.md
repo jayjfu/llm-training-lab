@@ -1,4 +1,3 @@
-
 ## Introduction
 TODO: inference throughout (tokens/s), custom evaluation, scaling laws, ...
 
@@ -13,7 +12,11 @@ python eval.py --task mmlu --model Qwen/Qwen2.5-0.5B-Instruct
 ```
 
 ## Custom Evaluation
-TODO
+TODO:
+1. Compare the pass@k curves of SFT, DPO and GRPO on MATH-500.
+2. Check how much vision ability survives text-only post-training on MMMU, MathVista (mini) and OCRBench.
+3. Judge chat quality with an LLM on Arena-Hard v2 and AlpacaEval 2.
+4. Track response length, clean stops and refusal rate.
 
 ## Local Eval Suit
 A local evaluation suite for measuring model quality across several standard benchmarks using Inspect AI:

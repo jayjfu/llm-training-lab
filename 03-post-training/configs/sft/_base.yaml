@@ -1,20 +1,20 @@
 stage: sft
 model: Qwen/Qwen3.5-0.8B-Base
-instruct_model: Qwen/Qwen3.5-0.8B  # chat template, eos, generation config
+instruct_model: Qwen/Qwen3.5-0.8B
 dataset: HuggingFaceTB/smol-smoltalk
-max_train_samples: null  # subsample conversations, e.g. 100000; null = full
+max_train_samples: null
 lora: null
 train:
   num_train_epochs: 1
   learning_rate: 2.0e-5
   warmup_steps: 0.03  # <1 = ratio of total steps
-  per_device_train_batch_size: 8
-  gradient_accumulation_steps: 4
+  per_device_train_batch_size: 2
+  gradient_accumulation_steps: 16
   max_length: 2048
   packing: false  # TRL packing leaks Gated DeltaNet state across examples
   bf16: true
-  gradient_checkpointing: true
+  gradient_checkpointing: false
   dataset_num_proc: 8
   save_steps: 500
-  save_total_limit: 2  # each full checkpoint is ~10 GB with optimizer state
+  save_total_limit: 2
   seed: 42

@@ -5,7 +5,7 @@ train:
   weight_decay: 0.01
   lr_scheduler_type: cosine
   warmup_steps: 0.1  # <1 = ratio of total steps
-  per_device_train_batch_size: 8  # completions, i.e. 2 prompts x 4 generations
+  per_device_train_batch_size: 8
   gradient_accumulation_steps: 1
   num_generations: 4
   num_iterations: 2
@@ -21,5 +21,5 @@ train:
   bf16: true
   gradient_checkpointing: true
   save_steps: 500
-  save_total_limit: 2  # each full checkpoint is ~10 GB with optimizer state
+  save_total_limit: 2
   seed: 42

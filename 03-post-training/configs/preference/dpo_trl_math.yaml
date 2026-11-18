@@ -5,11 +5,11 @@ train:
   weight_decay: 0.01
   lr_scheduler_type: cosine
   warmup_steps: 0.1  # <1 = ratio of total steps
-  per_device_train_batch_size: 4  # pairs
+  per_device_train_batch_size: 4
   gradient_accumulation_steps: 1
   beta: 0.1
   loss_type: [sigmoid]
-  max_length: null  # completions are already capped at 512 tokens
+  max_length: null
   bf16: true
   gradient_checkpointing: true
   max_grad_norm: 1.0
