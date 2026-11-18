@@ -1,0 +1,19 @@
+defaults: _base.yaml
+train:
+  epochs: 1
+  max_steps: -1
+  learning_rate: 5.0e-6
+  weight_decay: 0.01
+  warmup_steps: 0.1  # <1 = ratio of total steps
+  prompts_per_step: 2
+  num_generations: 4
+  num_iterations: 2
+  temperature: 0.9
+  top_p: 0.95
+  top_k: 0
+  repetition_penalty: 1.0
+  max_completion_length: 512
+  beta: 0.04
+  epsilon: 0.2
+  max_grad_norm: 1.0
+  seed: 42

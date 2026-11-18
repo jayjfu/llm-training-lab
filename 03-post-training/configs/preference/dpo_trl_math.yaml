@@ -1,0 +1,18 @@
+defaults: _base.yaml
+train:
+  num_train_epochs: 1
+  learning_rate: 1.0e-6
+  weight_decay: 0.01
+  lr_scheduler_type: cosine
+  warmup_steps: 0.1  # <1 = ratio of total steps
+  per_device_train_batch_size: 4  # pairs
+  gradient_accumulation_steps: 1
+  beta: 0.1
+  loss_type: [sigmoid]
+  max_length: null  # completions are already capped at 512 tokens
+  bf16: true
+  gradient_checkpointing: true
+  max_grad_norm: 1.0
+  save_steps: 500
+  save_total_limit: 2
+  seed: 42

@@ -1,0 +1,3 @@
+defaults: grpo_trl_math.yaml
+train:
+  loss_type: dapo

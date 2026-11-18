@@ -1,74 +1,81 @@
-
 ## Introduction
-TODO: turn base model to instruct model through: SFT, RL, DPO, Distillation, ...
+This part turns Qwen3.5-0.8B-Base into an instruct model with SFT, DPO, GRPO and distillation. Each run is one config, and every run is evaluated on the same benchmarks.
 
-TODO: Roadmaps:
-1. with Hugging Face stack: TRL + PEFT + Unsloth
-2. without TRL: from scratch
-3. Megatron-style?? parallelism and efficiency
+TODO: The roadmap has three stages.
+1. Build each method with the Hugging Face stack (TRL, PEFT and Unsloth).
+2. Reimplement each method from scratch without TRL.
+3. Explore Megatron-style parallelism and efficiency.
+
+## Project Structure
+```
+03-post-training/
+├── configs/<stage>/<run_name>.yaml
+├── src/
+│   ├── common.py
+│   ├── data.py
+│   ├── rewards.py
+│   ├── sft_trl.py
+│   ├── grpo_trl.py
+│   ├── grpo.py
+│   ├── make_pairs.py
+│   ├── dpo_trl.py
+│   └── dpo.py
+└── scripts/
+    ├── eval_leaderboard.sh
+    └── collect_results.py
+```
 
 ## SFT
-TODO  
-**Scripts:**
+We fine-tune on smol-smoltalk with full fine-tuning and LoRA.
 ```bash
-# Train SFT variants
-python trl_train_sft.py
-
-# Evaluate base + instruct + all SFT variants on leaderboard tasks
-bash eval_sft.sh
+python src/sft_trl.py --configs configs/sft/*.yaml [--resume]
 ```
 
 ## Preference
-TODO
-
-## RL
-TODO: GRPO on MATH-lvl-1,2,3,4  
-
-**Scripts:**
+We train DPO from the SFT checkpoint on the MATH train split. Pairs come from the SFT model with GRPO's sampling settings and are scored by GRPO's reward.
 ```bash
-# GRPO
-python trl_train_grpo.py
-
-# GRPO (custom) 
-python train_grpo.py
+python src/make_pairs.py --configs configs/preference/dpo_math.yaml
+python src/dpo_trl.py --configs configs/preference/dpo_trl_math.yaml
+python src/dpo.py --configs configs/preference/dpo_math.yaml
 ```
 
+## RL
+We train GRPO from the SFT checkpoint on the MATH train split. The TRL and from-scratch versions use matching configs.
 ```bash
-# Eval on MATH-lvl-5
-...
+python src/grpo_trl.py --configs configs/rl/grpo_trl_math*.yaml
+python src/grpo.py --configs configs/rl/grpo_math.yaml
 ```
 
 ## Distillation
-TODO
+TODO: Add distillation from a larger teacher model.
+
+## Evaluation
+The script evaluates all runs by default and skips finished tasks.
+```bash
+bash scripts/eval_leaderboard.sh [run_name ...]
+```
 
 ## Results
-We only include all the results on six tasks of LLM learderboard v2 here. Additional results on other benchmarks and custom evaluations 
-are available in the [Evaluation Section](../04-evaluation/README.md).  
+The table shows the best run per stage on Open LLM Leaderboard v2. All runs are in [RESULTS.md](RESULTS.md), and more evaluations are in [04-evaluation](../04-evaluation/README.md).
 
-| Stage          | Model                  | IFEval         | MuSR          | MATH Lvl-5    | BBH           | MMLU-Pro      | GPQA          | Avg           |
-|----------------|------------------------|----------------|---------------|---------------|---------------|---------------|---------------|---------------|
-| **Base**       | Qwen/Qwen3.5-0.8B-Base | 25.88          | 38.10         | 7.33          | 40.72         | 24.84         | 29.19         | 27.68         |
-| **SFT**        |                        | 0              | 0             | 0             | 0             | 0             | 0             | 0             |
-| **RL**         |                        | 0              | 0             | 0             | 0             | 0             | 0             | 0             |
-| **Preference** |                        | 0              | 0             | 0             | 0             | 0             | 0             | 0             |
-| **Instruct**   | Qwen/Qwen3.5-0.8B      | 53.97 (+28.09) | 42.72 (+4.62) | 12.99 (+5.66) | 33.76 (-6.96) | 16.27 (-8.57) | 26.01 (-3.18) | 30.95 (+3.27) |
+<!-- results:start -->
+| Stage | Model | IFEval | MuSR | MATH Lvl-5 | BBH | MMLU-Pro | GPQA | Avg |
+|---|---|---|---|---|---|---|---|---|
+| **Base** | Qwen/Qwen3.5-0.8B-Base | 25.88 | 38.10 | 7.33 | 40.72 | 24.84 | 29.19 | 27.68 |
+| **Instruct** | Qwen/Qwen3.5-0.8B | 53.97 (+28.09) | 42.72 (+4.62) | 12.99 (+5.66) | 33.76 (-6.96) | 16.27 (-8.57) | 26.01 (-3.18) | 30.95 (+3.28) |
+<!-- results:end -->
 
 ## Benchmarks
-TODO
-1. Coding:
-   - TODO
-2. Agentic:
-   - IFEval (Instruction Following Evaluation)
-3. Reasoning & Knowledge & Multimodal:
-   - MuSR (Multistep Soft Reasoning), MATH Level-5 (Mathematics Aptitude Test of Heuristics, Level 5 subset), BBH (Big 
-   Bench Hard) 
-   - MMLU-Pro (Massive Multitask Language Understanding - Pro version), GPQA (Google-Proof Q&A Benchmark)
-   - TODO
-4. Cybersecurity
-   - TODO
+1. Coding: TODO.
+2. Agentic: IFEval.
+3. Reasoning, knowledge and multimodal:
+   - Reasoning: MuSR, MATH Lvl-5, BBH.
+   - Knowledge: MMLU-Pro, GPQA.
+   - Multimodal: TODO.
+4. Cybersecurity: TODO.
 
 ## Others
-TODO: potential problems/failure: KL collapse, reward hacking, eval contamination, verbosity bias, ...
+TODO: Document common failure modes such as reward hacking, KL collapse, length bias, eval contamination, verbosity bias and template mismatches.
 
 ## Reference & Acknowledgement:
 

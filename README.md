@@ -71,18 +71,23 @@ TODO:
 - Annealing, long-context, domain/reasoning warmup
 
 ## Post-training
-TODO:
-- SFT, preference optimization, RL, distillation
+WIP: We turn Qwen3.5-0.8B-Base into an instruct model. Details are in [03-post-training](03-post-training/README.md), and all runs are in [RESULTS.md](03-post-training/RESULTS.md).
 
-**Results:**  
+- SFT: We fine-tune on smol-smoltalk with full fine-tuning and LoRA.
+- Preference: We train DPO on MATH pairs sampled from the SFT model.
+- RL: We train GRPO on MATH and compare the `grpo`, `dapo` and `dr_grpo` losses.
+- Distillation: TODO.
 
-| Stage          | Model                  | IFEval         | MuSR          | MATH Lvl-5    | BBH           | MMLU-Pro      | GPQA          | Avg           |
-|----------------|------------------------|----------------|---------------|---------------|---------------|---------------|---------------|---------------|
-| **Base**       | Qwen/Qwen3.5-0.8B-Base | 25.88          | 38.10         | 7.33          | 40.72         | 24.84         | 29.19         | 27.68         |
-| **SFT**        |                        | 0              | 0             | 0             | 0             | 0             | 0             | 0             |
-| **RL**         |                        | 0              | 0             | 0             | 0             | 0             | 0             | 0             |
-| **Preference** |                        | 0              | 0             | 0             | 0             | 0             | 0             | 0             |
-| **Instruct**   | Qwen/Qwen3.5-0.8B      | 53.97 (+28.09) | 42.72 (+4.62) | 12.99 (+5.66) | 33.76 (-6.96) | 16.27 (-8.57) | 26.01 (-3.18) | 30.95 (+3.27) |
+DPO and GRPO each have a TRL version and a from-scratch version.
+
+**Results:** The table shows the best run per stage.
+
+<!-- results:start -->
+| Stage | Model | IFEval | MuSR | MATH Lvl-5 | BBH | MMLU-Pro | GPQA | Avg |
+|---|---|---|---|---|---|---|---|---|
+| **Base** | Qwen/Qwen3.5-0.8B-Base | 25.88 | 38.10 | 7.33 | 40.72 | 24.84 | 29.19 | 27.68 |
+| **Instruct** | Qwen/Qwen3.5-0.8B | 53.97 (+28.09) | 42.72 (+4.62) | 12.99 (+5.66) | 33.76 (-6.96) | 16.27 (-8.57) | 26.01 (-3.18) | 30.95 (+3.28) |
+<!-- results:end -->
 
 ## Evaluation
 Run a full local evaluation suite with Inspect AI and vLLM:

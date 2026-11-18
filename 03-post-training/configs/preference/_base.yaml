@@ -1,0 +1,13 @@
+stage: preference
+model: ckpts/sft_full_lr2e5/final  # same start as GRPO
+dataset: DigitalLearningGmbH/MATH-lighteval
+levels: [Level 1, Level 2, Level 3, Level 4, Level 5]
+pairs:  # on-policy samples with GRPO's sampling settings, scored by GRPO's reward
+  name: math_sft_full_lr2e5
+  num_generations: 4
+  temperature: 0.9
+  top_p: 0.95
+  top_k: 0
+  repetition_penalty: 1.0
+  max_completion_length: 512
+  seed: 42

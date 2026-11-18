@@ -1,0 +1,4 @@
+stage: rl
+model: ckpts/sft_full_lr2e5/final  # SFT checkpoint; prompts use its chat template
+dataset: DigitalLearningGmbH/MATH-lighteval  # MATH train split only; no test problems
+levels: [Level 1, Level 2, Level 3, Level 4, Level 5]

@@ -1,0 +1,3 @@
+defaults: _base.yaml
+train:
+  learning_rate: 5.0e-5
