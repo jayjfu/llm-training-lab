@@ -14,69 +14,66 @@ Note: training efficiency is covered in [05-optimization](../05-optimization).
 │   ├── schedule.py       # cosine, WSD
 │   ├── train.py          # training loop
 │   ├── hellaswag.py      # HellaSwag eval
-│   └── results.py        # RESULTS.md tables, loss plots
-├── studies/              # one folder per study: run scripts, README, RESULTS
+│   └── results.py        # RESULTS.md tables, loss curves
+├── studies/              # one folder per study: run scripts and README
 │   ├── architecture/     # one-change ablations of model, optimizer, schedule
 │   └── scaling_laws/     # isoFLOP sweep, model size vs tokens
 ├── scripts/
-│   └── anchor.sh         # LR sweep, seed noise floor, GPT-2 124M anchor
-└── RESULTS.md            # anchor results and all runs
+│   └── hparam_tuning.sh  # LR sweep, seed variance, GPT-2 124M baseline
+└── RESULTS.md            # all results: tuning, baseline, studies, all runs
 ```
-Studies reuse the core and only add their own scripts. A study that becomes a small switch moves into the core as a flag.
+Studies reuse the core and only add their own scripts. All results go to `RESULTS.md`. A study that becomes a small switch moves into the core as a flag.
 
 ## Roadmap
-Goal: the best final model for a fixed compute budget. S and L times are measured, M and XL are estimates.
+Goal: the best final model for a fixed compute budget. 25M and 124M times are measured, 50M and 350M are estimates.
 
-| Tier | Model | Tokens | Time (est.) | Use |
+| Model | Config | Tokens | Time | Role |
 |---|---|---|---|---|
-| S | 8L × 512 (~25M non-emb) | 0.5B | 0.5 h | screen ablations |
-| M | 10L × 640 (~50M non-emb) | 1B | ~1.3 h | confirm winners |
-| L | 12L × 768 (GPT-2 124M) | 2.5B | 4.6 h | anchor runs |
-| XL | 24L × 1024 (GPT-2 350M) | 7B | ~1.5 days | final scale-up |
+| 25M | 8L × 512 | 0.5B | 0.5 h | ablation screen |
+| 50M | 10L × 640 | 1B | ~1.3 h | ablation confirm |
+| 124M | 12L × 768 (GPT-2 small) | 2.5B | 4.6 h | baseline |
+| 350M | 24L × 1024 (GPT-2 medium) | 7B | ~1.5 days | scale-up |
 
-Micro-batch × accumulation at seq 1024: S 16 × 16, L 8 × 64, XL 4 × 128.
+25M and 50M count non-embedding parameters, 124M and 350M are the GPT-2 names. Micro-batch × accumulation at seq 1024: 25M 16 × 16, 124M 8 × 64, 350M 4 × 128. Run names start with the model size, e.g. `25m_adamw_lr1e-3`, `124m_baseline`.
 
-- [x] [Setup](#setup): FineWeb with the GPT-2 tokenizer.
-- [x] [Anchor](#anchor): LR sweep, noise floor, GPT-2 124M reference run.
-- [ ] [Ablations](#ablations): one change at a time at tier S, winners confirmed at tier M.
-- [ ] [Modern baseline (WIP)](#modern-baseline-wip): all winners combined.
-- [ ] [Scaling (WIP)](#scaling-wip): bigger model and an isoFLOP sweep.
-- [ ] [Data (WIP)](#data-wip): datasets, mixtures and tokenizers.
+- [x] [Data Preparation](#data-preparation): FineWeb with the GPT-2 tokenizer.
+- [x] [Hyperparameter Tuning](#hyperparameter-tuning): LR sweep, seed variance, GPT-2 124M baseline.
+- [ ] [Ablations](#ablations): one change at a time at 25M, winners confirmed at 50M.
+- [ ] [Modern Baseline (WIP)](#modern-baseline-wip): all winners combined.
+- [ ] [Scaling Laws (WIP)](#scaling-laws-wip): 350M run and an isoFLOP sweep.
+- [ ] [Data Ablations (WIP)](#data-ablations-wip): datasets, mixtures and tokenizers.
 
-## Setup
+## Data Preparation
 FineWeb sample-10BT with the GPT-2 tokenizer, so losses compare with nanoGPT, llm.c and modded-nanogpt. The first 10M tokens are the val split.
 ```bash
-cd src
-pip install torch numpy tqdm datasets tiktoken
-python -m pretraining.data --dataset fineweb --num_tokens 2_500_000_000  # 7B+ tokens for tier XL
+python -m pretraining.data --dataset fineweb --num_tokens 2_500_000_000  # 7B+ tokens for 350M
 ```
 
 ## Baseline
-A plain GPT-2: learned positions, pre-LayerNorm, GELU, tied embeddings, no dropout. AdamW (0.9, 0.95), weight decay 0.1, grad clip 1.0, WSD schedule.
+GPT-2: learned positions, pre-LayerNorm, GELU, tied embeddings, no dropout. AdamW (0.9, 0.95), weight decay 0.1, grad clip 1.0, WSD schedule.
 ```bash
-cd src
-python -m pretraining.train --run_name s_baseline --n_layer 8 --n_head 8 --n_embd 512 --sequence_length 1024 \
+python -m pretraining.train --run_name 25m_baseline --n_layer 8 --n_head 8 --n_embd 512 --sequence_length 1024 \
   --batch_size 16 --acc_steps 16 --iterations 1907 --lr 1e-3 --warmup_steps 100 --eval_interval 200 --hellaswag
 
-python -m pretraining.train --run_name s_baseline ... --resume_from ../ckpts/s_baseline/latest.pt  # resume
-python -m pretraining.hellaswag --ckpt ../ckpts/s_baseline/latest.pt                              # eval a checkpoint
+python -m pretraining.train --run_name 25m_baseline ... --resume_from ../ckpts/25m_baseline/latest.pt  # resume
+python -m pretraining.hellaswag --ckpt ../ckpts/25m_baseline/latest.pt                              # eval a checkpoint
 python -m pretraining.results --update_results                                                      # refresh RESULTS.md
 ```
 Logs in `output/`, checkpoints in `ckpts/`.
 
-## Anchor
-Find the best tier S LR, measure seed noise, and train GPT-2 124M as the reference for every later run.
+## Hyperparameter Tuning
+Sweep the AdamW LR at 25M, measure seed variance, and train the GPT-2 124M baseline that every later run is compared to.
 ```bash
-bash scripts/anchor.sh sweep          # AdamW lr 5e-4 / 1e-3 / 2e-3 at tier S
-bash scripts/anchor.sh seeds 1e-3     # best lr, 2 more seeds
-bash scripts/anchor.sh anchor         # GPT-2 124M, 2.5B tokens
+bash scripts/hparam_tuning.sh lr_sweep      # 25M, lr 5e-4 / 1e-3 / 2e-3
+bash scripts/hparam_tuning.sh seeds 1e-3    # best lr, 2 more seeds
+bash scripts/hparam_tuning.sh baseline      # GPT-2 124M, 2.5B tokens
 ```
 | Run | Val loss | HellaSwag acc_norm |
 |---|---|---|
-| Tier S, best lr 1e-3 (3 seeds) | 3.971–3.979 | 25.4–26.1% |
+| 25M, lr 1e-3 (3 seeds) | 3.971–3.979 | 25.4–26.1% |
 | GPT-2 124M, 2.5B tokens | 3.495 | 27.63% |
 
-Seed noise at tier S is ~0.01 val loss. All runs: [RESULTS.md](RESULTS.md).
+Seed variance at 25M is ~0.01 val loss. All runs: [RESULTS.md](RESULTS.md).
 
 ## Ablations
 Change one component at a time: optimizer, schedule, norm, activation, positions, attention, embeddings, stability, shape, batch size. Each variant gets its own LR sweep.
@@ -86,15 +83,15 @@ python studies/architecture/ablations.py screen --base_lr 1e-3 --lr_mults 1 2 \
   --groups norm activation positions attention embeddings stability shape batch
 python studies/architecture/ablations.py confirm --base_lr 1e-3 --variants muon swiglu --lr_mults 0.5 1
 ```
-Details: [studies/architecture](studies/architecture/README.md). Results: [studies/architecture/RESULTS.md](studies/architecture/RESULTS.md).
+Details: [studies/architecture](studies/architecture/README.md). Results: [RESULTS.md](RESULTS.md#ablations).
 
 ## Modern Baseline (WIP)
-Combine the ablation winners, re-tune LR and batch size, and rerun at tier L against the anchor.
+Combine the ablation winners, re-tune LR and batch size, and compare with the GPT-2 124M baseline.
 
-## Scaling (WIP)
-Train the modern baseline at tier XL, and run a small isoFLOP sweep to find the compute-optimal size. Details: [studies/scaling_laws](studies/scaling_laws/README.md).
+## Scaling Laws (WIP)
+Train the modern baseline at 350M, and run a small isoFLOP sweep for the compute-optimal model size. Details: [studies/scaling_laws](studies/scaling_laws/README.md).
 
-## Data (WIP)
+## Data Ablations (WIP)
 Compare FineWeb, FineWeb-Edu and mixes with code and math. Also tokenizer size, and best-fit packing vs plain concatenation.
 
 ## Evaluation

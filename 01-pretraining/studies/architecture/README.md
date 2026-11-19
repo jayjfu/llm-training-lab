@@ -1,11 +1,11 @@
 # Architecture Study
 
-One-change ablations on the shared core at tier S, winners confirmed at tier M. The winners form the modern baseline. Results are in [RESULTS.md](RESULTS.md).
+One-change ablations on the shared core at 25M, winners confirmed at 50M. The winners form the modern baseline. Results are in [RESULTS.md](../../RESULTS.md#ablations).
 
 ## Protocol
 - Change one thing from the baseline. Keep data order, tokens and eval set fixed. Match params within ±5%.
 - Sweep LR over ×{0.5, 1, 2} per variant and keep the best.
-- Differences smaller than the 3-seed baseline spread are ties.
+- Differences smaller than the 3-seed variance of the baseline are ties.
 
 ## Switches
 | Group | Variants | Flag |
@@ -22,7 +22,7 @@ One-change ablations on the shared core at tier S, winners confirmed at tier M. 
 | Batch size | 0.13M / 0.26M / 0.52M tokens | `--acc_steps` |
 
 ## Run
-From `01-pretraining/`. `--base_lr 1e-3` is the best tier S LR from the anchor sweep.
+From `01-pretraining/`. `--base_lr 1e-3` is the best 25M LR from hyperparameter tuning.
 ```bash
 # optimizer and schedule shift the best LR the most: lr x {0.5, 1, 2}
 python studies/architecture/ablations.py screen --base_lr 1e-3 --groups optimizer schedule
@@ -31,11 +31,11 @@ python studies/architecture/ablations.py screen --base_lr 1e-3 --groups optimize
 python studies/architecture/ablations.py screen --base_lr 1e-3 --lr_mults 1 2 \
   --groups norm activation positions attention embeddings stability shape batch
 
-# confirm winners at tier M, then collect results
+# confirm winners at 50M, then collect results
 python studies/architecture/ablations.py confirm --base_lr 1e-3 --variants muon swiglu --lr_mults 0.5 1
-cd src && python -m pretraining.results --runs "s_*" --ablations s_adamw --update_results
+cd src && python -m pretraining.results --ablations 25m_adamw --update_results
 ```
-- About 27 hours of tier S runs. Finished runs are skipped. `--dry_run` prints the commands.
+- About 27 hours of 25M runs. Finished runs are skipped. `--dry_run` prints the commands.
 - Muon sweeps its matrix LR around 0.02. Lion is centered at 0.2× the base LR.
 - If the best LR is at the sweep edge, add the missing multiplier, e.g. `--lr_mults 4`.
 

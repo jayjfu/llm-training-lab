@@ -1,6 +1,7 @@
 import argparse
 import json
 import re
+from fnmatch import fnmatch
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]  # 01-pretraining
@@ -58,11 +59,11 @@ def ablation_table(runs, baseline):
     seeded_lrs = {entry[0] for entry in groups[baseline] if entry[1] is not None}
     seed_lr = seeded_lrs.pop() if seeded_lrs else base_lr
     seed_losses = [entry[2]["evals"][-1]["eval"]["val_loss"] for entry in groups[baseline] if entry[0] == seed_lr]
-    noise = max(seed_losses) - min(seed_losses) if len(seed_losses) > 1 else 0.0
+    seed_spread = max(seed_losses) - min(seed_losses) if len(seed_losses) > 1 else 0.0
 
     lines = [
         f"Baseline `{baseline}` at lr {base_lr:g}: val loss {base_loss:.4f}. "
-        f"Noise floor (seed range at lr {seed_lr:g}, {len(seed_losses)} seeds): {noise:.4f}.",
+        f"Seed variance (range at lr {seed_lr:g}, {len(seed_losses)} seeds): {seed_spread:.4f}.",
         "",
         "| Variant | Best LR | LRs tried | Non-emb params | Val loss | Δ vs baseline | HellaSwag acc_norm | Verdict |",
         "|---|---|---|---|---|---|---|---|",
@@ -75,7 +76,7 @@ def ablation_table(runs, baseline):
         tried = sorted({entry[0] for entry in entries if entry[1] is None})
         loss = run["evals"][-1]["eval"]["val_loss"]
         delta = loss - base_loss
-        verdict = "baseline" if variant == baseline else "better" if delta < -noise else "worse" if delta > noise else "tie"
+        verdict = "baseline" if variant == baseline else "better" if delta < -seed_spread else "worse" if delta > seed_spread else "tie"
         if len(tried) > 1 and lr in (tried[0], tried[-1]):
             verdict += ", LR at sweep edge"
         hellaswag = run["hellaswag"].get("hellaswag_acc_norm")
@@ -121,28 +122,28 @@ def plot_curves(runs, path, skip_fraction):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--runs", type=str, default="*")  # glob over run names, e.g. "s_*"
+    parser.add_argument("--runs", type=str, default="*")  # glob over run names, e.g. "25m_*"
     parser.add_argument("--out_dir", type=str, default=str(ROOT / "output"))
     parser.add_argument("--update_results", action="store_true")
     parser.add_argument("--plot", action="store_true")
-    parser.add_argument("--ablations", type=str, default="")  # baseline variant, e.g. "s_adamw"
+    parser.add_argument("--ablations", type=str, default="")  # baseline variant, e.g. "25m_adamw"
     parser.add_argument("--skip_fraction", type=float, default=0.1)  # hide the early high-loss part
     args = parser.parse_args()
 
-    runs = [load_run(path) for path in sorted(Path(args.out_dir).glob(f"{args.runs}/log.jsonl"))]
-    runs = [run for run in runs if run["evals"]]
+    all_runs = [load_run(path) for path in sorted(Path(args.out_dir).glob("*/log.jsonl"))]
+    all_runs = [run for run in all_runs if run["evals"]]
+    runs = [run for run in all_runs if fnmatch(run["name"], args.runs)]  # --runs filters print and plot only
     if not runs:
         raise SystemExit(f"no runs matching {args.runs!r} in {args.out_dir}")
-    table = results_table(runs)
-    print(table)
+    print(results_table(runs))
     if args.update_results:
-        update_results_md(ROOT / "RESULTS.md", table)
+        update_results_md(ROOT / "RESULTS.md", results_table(all_runs))  # the saved table always has every run
     if args.ablations:
         prefix = args.ablations.split("_")[0] + "_"
-        ablations = ablation_table([run for run in runs if run["name"].startswith(prefix)], args.ablations)
+        ablations = ablation_table([run for run in all_runs if run["name"].startswith(prefix)], args.ablations)
         print("\n" + ablations)
         if args.update_results:
-            update_results_md(ROOT / "studies/architecture/RESULTS.md", ablations, ABLATION_MARKERS)
+            update_results_md(ROOT / "RESULTS.md", ablations, ABLATION_MARKERS)
     if args.plot:
         plot_curves(runs, Path(args.out_dir) / f"val_loss_{args.runs.replace('*', 'all')}.png", args.skip_fraction)
 

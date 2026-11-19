@@ -25,11 +25,11 @@ A toy end-to-end pipeline (tokenizer → pretrain → SFT → RL) that runs on a
 ## Pretraining
 WIP: We pretrain small GPT models from scratch on FineWeb, starting from a GPT-2 baseline and changing one component at a time. Details are in [01-pretraining](01-pretraining/README.md), and all runs are in [RESULTS.md](01-pretraining/RESULTS.md).
 
-- Anchor: tier S LR sweep, seed noise floor, and a GPT-2 124M reference run.
+- Hyperparameter tuning: LR sweep and seed variance at 25M, and a GPT-2 124M baseline.
 - Ablations: optimizer, schedule, norm, activation, positions, attention, embeddings, stability, shape, batch size.
-- Next: modern baseline from the winners, scaling (isoFLOP sweep), data mixtures.
+- Next: modern baseline from the winners, scaling laws (isoFLOP sweep), data ablations.
 
-**Results:** GPT-2 124M anchor after 2.5B tokens.
+**Results:** GPT-2 124M baseline after 2.5B tokens.
 
 | Model | Tokens | Val loss | HellaSwag acc_norm |
 |---|---|---|---|
