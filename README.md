@@ -23,15 +23,19 @@ Every stage of the LLM pipeline is implemented here as runnable code, then used 
 A toy end-to-end pipeline (tokenizer → pretrain → SFT → RL) that runs on a CPU in minutes. Details in [prototype](prototype/README.md).
 
 ## Pretraining
+WIP: We pretrain small GPT models from scratch on FineWeb, starting from a GPT-2 baseline and changing one component at a time. Details are in [01-pretraining](01-pretraining/README.md), and all runs are in [RESULTS.md](01-pretraining/RESULTS.md).
 
-### Baseline
-WIP: Baseline model + all results in [RESULTS.md](01-pretraining/src/baseline/RESULTS.md)
+- Anchor: tier S LR sweep, seed noise floor, and a GPT-2 124M reference run.
+- Ablations: optimizer, schedule, norm, activation, positions, attention, embeddings, stability, shape, batch size.
+- Next: modern baseline from the winners, scaling (isoFLOP sweep), data mixtures.
 
-- Model Architecture: RoPE + pre-norm + RMSNorm + SwiGLU
-- Data: cleaning, mixture ratio
-- Training: AdamW + scheduler (cosine/WSD)
-- Hyperparameter: learning rate, batch size
-- Scaling laws: [paper-reproduction](01-pretraining/scaling_laws/paper-reproductions.md)
+**Results:** GPT-2 124M anchor after 2.5B tokens.
+
+| Model | Tokens | Val loss | HellaSwag acc_norm |
+|---|---|---|---|
+| GPT-2 124M (ours) | 2.5B | 3.495 | 27.63% |
+| GPT-2 124M (OpenAI) | - | - | ≈29.5% |
+| llm.c GPT-2 124M | 10B | ≈3.28 | - |
 
 ## Midtraining
 TODO:
