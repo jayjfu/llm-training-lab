@@ -1,14 +1,11 @@
 ## Introduction
-TODO: inference throughout (tokens/s), custom evaluation, scaling laws, ...
+TODO: inference throughout (tokens/s), custom evaluation, ...
 
-### Prototype
-**Simple Eval:** generative (GSM8K) and categorical (MMLU) evaluation, backend by vLLM
+## Simple Eval
+A quick check of any Hugging Face model with vLLM: generative (GSM8K) and categorical (MMLU).
 ```bash
-# Generative Evaluation
-python eval.py --task gsm8k --model Qwen/Qwen2.5-0.5B-Instruct
-
-# Categorical Evaluation
-python eval.py --task mmlu --model Qwen/Qwen2.5-0.5B-Instruct
+python simple_eval.py --task gsm8k --model Qwen/Qwen2.5-0.5B-Instruct --max_problems 50
+python simple_eval.py --task mmlu --model Qwen/Qwen2.5-0.5B-Instruct --max_problems 100
 ```
 
 ## Custom Evaluation
@@ -30,11 +27,6 @@ bash run_eval_suit.sh
 # Interactive viewer
 inspect view
 ```
-
-## Scaling Laws
-TODO: [paper-reproduction](scaling_laws/paper-reproductions.md)
-1. Model size and data should be scaled roughly equally.
-2. 20 tokens per parameter from empirical experience.
 
 ## Reference & Acknowledgement:
 

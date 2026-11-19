@@ -24,20 +24,20 @@ class GSM8KTask(Task):
     GSM_pattern = r"#### (\-?[0-9\.\,]+)" # extract answer after #### marker
 
     def __init__(self, split="test", max_examples=None):
-        ds = load_dataset("openai/gsm8k", "main", split=split)
+        dataset = load_dataset("openai/gsm8k", "main", split=split)
         if max_examples is not None:
-            ds = ds.select(range(min(max_examples, len(ds))))
-        self.ds = ds
+            dataset = dataset.select(range(min(max_examples, len(dataset))))
+        self.dataset = dataset
 
     @property
     def eval_type(self):
         return "generative"
 
     def __len__(self):
-        return len(self.ds)
+        return len(self.dataset)
 
     def __getitem__(self, idx):
-        row = self.ds[idx]
+        row = self.dataset[idx]
         question = row["question"]
         match = re.search(self.GSM_pattern, row["answer"])
         answer = match.group(1).strip().replace(",", "") if match else ""
@@ -61,20 +61,20 @@ class MMLUTask(Task):
     LETTERS = ["A", "B", "C", "D"]
 
     def __init__(self, subject="all", split="test", max_examples=None):
-        ds = load_dataset("cais/mmlu", subject, split=split)
+        dataset = load_dataset("cais/mmlu", subject, split=split)
         if max_examples is not None:
-            ds = ds.select(range(min(max_examples, len(ds))))
-        self.ds = ds
+            dataset = dataset.select(range(min(max_examples, len(dataset))))
+        self.dataset = dataset
 
     @property
     def eval_type(self):
         return "categorical"
 
     def __len__(self):
-        return len(self.ds)
+        return len(self.dataset)
 
     def __getitem__(self, idx):
-        row = self.ds[idx]
+        row = self.dataset[idx]
         question = row["question"]
         choices = row["choices"]
         answer_idx = row["answer"]
@@ -114,18 +114,18 @@ class VLLMEngine:
 
 
 def run_eval(task, engine, max_new_tokens, temperature, max_problems):
-    n = len(task) if max_problems is None else min(len(task), max_problems)
+    n_problems = len(task) if max_problems is None else min(len(task), max_problems)
     correct = 0
 
-    for i in range(n):
-        conv = task[i]
-        user_msg = conv["messages"][0]["content"]
+    for index in range(n_problems):
+        conversation = task[index]
+        user_msg = conversation["messages"][0]["content"]
         prompt = f"User: {user_msg}\nAssistant:"
 
         gen_tokens = 8 if task.eval_type == "categorical" else max_new_tokens # short completion for categorical tasks
         response = engine.generate(prompt, max_new_tokens=gen_tokens, temperature=temperature)
 
-        is_correct = task.evaluate(conv, response)
+        is_correct = task.evaluate(conversation, response)
         correct += int(is_correct)
 
         status = "✓" if is_correct else "✗"
@@ -133,22 +133,22 @@ def run_eval(task, engine, max_new_tokens, temperature, max_problems):
             preview = response[:50].replace("\n", " ") + " ... " + response[-100:].replace("\n", " ")
         else:
             preview = response.replace("\n", " ")
-        print(f"[{i+1}/{n}] {status}  {preview}")
+        print(f"[{index + 1}/{n_problems}] {status}  {preview}")
         if task.eval_type == "generative":
-            print(f"  GT: {conv.get('answer', 'N/A')}")
+            print(f"  GT: {conversation.get('answer', 'N/A')}")
 
-    acc = correct / n
-    print(f"\nAccuracy: {correct}/{n} = {100*acc:.2f}%")
-    return acc
+    accuracy = correct / n_problems
+    print(f"\nAccuracy: {correct}/{n_problems} = {100 * accuracy:.2f}%")
+    return accuracy
 
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--task", type=str, default="gsm8k", choices=["gsm8k", "mmlu"])
     parser.add_argument("--model", type=str, default="Qwen/Qwen2.5-0.5B-Instruct")
-    parser.add_argument("--max-new-tokens", type=int, default=512)
+    parser.add_argument("--max_new_tokens", type=int, default=512)
     parser.add_argument("--temperature", type=float, default=0.0)
-    parser.add_argument("--max-problems", type=int, default=None)
+    parser.add_argument("--max_problems", type=int, default=None)
     args = parser.parse_args()
 
     if args.task == "gsm8k":

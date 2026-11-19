@@ -24,25 +24,25 @@ SPECIAL_TOKENS = [
 def _pair_counts(words):
     counts = Counter()
     for word, freq in words.items():
-        for i in range(len(word) - 1):
-            counts[(word[i], word[i + 1])] += freq
+        for pos in range(len(word) - 1):
+            counts[(word[pos], word[pos + 1])] += freq
     return counts
 
 
 def _merge(words, pair, new_id):
     merged = {}
-    a, b = pair
+    first, second = pair
     for word, freq in words.items():
-        out = []
-        i = 0
-        while i < len(word):
-            if i < len(word) - 1 and word[i] == a and word[i + 1] == b:
-                out.append(new_id)
-                i += 2
+        merged_word = []
+        pos = 0
+        while pos < len(word):
+            if pos < len(word) - 1 and word[pos] == first and word[pos + 1] == second:
+                merged_word.append(new_id)
+                pos += 2
             else:
-                out.append(word[i])
-                i += 1
-        key = tuple(out)
+                merged_word.append(word[pos])
+                pos += 1
+        key = tuple(merged_word)
         merged[key] = merged.get(key, 0) + freq
     return merged
 
@@ -50,7 +50,7 @@ def _merge(words, pair, new_id):
 class BPETokenizer:
     def __init__(self):
         self.merges = {}
-        self.vocab = {i: bytes([i]) for i in range(256)}
+        self.vocab = {byte: bytes([byte]) for byte in range(256)}
         self.special_to_id = {}
         self.id_to_special = {}
 
@@ -71,28 +71,28 @@ class BPETokenizer:
             words[tuple(chunk.encode("utf-8"))] += 1
 
         merges = {}
-        vocab = {i: bytes([i]) for i in range(256)}
-        for i in range(n_merges):
+        vocab = {byte: bytes([byte]) for byte in range(256)}
+        for merge_index in range(n_merges):
             counts = _pair_counts(words)
             if not counts:
                 break
             pair = max(counts, key=counts.get)
-            new_id = 256 + i
+            new_id = 256 + merge_index
             words = _merge(words, pair, new_id)
             merges[pair] = new_id
             vocab[new_id] = vocab[pair[0]] + vocab[pair[1]]
-            if verbose and (i < 5 or (i + 1) % 100 == 0 or i + 1 == n_merges):
-                print(f"merge {i + 1:4d}/{n_merges} | {str(pair):<10} -> {new_id:4d} | freq: {counts[pair]:,}")
+            if verbose and (merge_index < 5 or (merge_index + 1) % 100 == 0 or merge_index + 1 == n_merges):
+                print(f"merge {merge_index + 1:4d}/{n_merges} | {str(pair):<10} -> {new_id:4d} | freq: {counts[pair]:,}")
 
         self.merges = merges
         self.vocab = vocab
-        self.special_to_id = {tok: 256 + n_merges + i for i, tok in enumerate(SPECIAL_TOKENS)}
-        self.id_to_special = {i: tok for tok, i in self.special_to_id.items()}
+        self.special_to_id = {tok: 256 + n_merges + offset for offset, tok in enumerate(SPECIAL_TOKENS)}
+        self.id_to_special = {token_id: tok for tok, token_id in self.special_to_id.items()}
 
     def _encode_word(self, word):
         ids = list(word)
         while len(ids) >= 2:
-            pairs = [(self.merges.get((ids[i], ids[i + 1]), 10**18), i) for i in range(len(ids) - 1)]
+            pairs = [(self.merges.get((ids[pos], ids[pos + 1]), 10**18), pos) for pos in range(len(ids) - 1)]
             rank, pos = min(pairs)
             if rank == 10**18:
                 break
@@ -113,14 +113,14 @@ class BPETokenizer:
         return ids
 
     def decode(self, ids, skip_special=False):
-        out = bytearray()
-        for i in ids:
-            if i in self.id_to_special:
+        raw = bytearray()
+        for token_id in ids:
+            if token_id in self.id_to_special:
                 if not skip_special:
-                    out.extend(self.id_to_special[i].encode("utf-8"))
+                    raw.extend(self.id_to_special[token_id].encode("utf-8"))
                 continue
-            out.extend(self.vocab[i])
-        return out.decode("utf-8", errors="replace")
+            raw.extend(self.vocab[token_id])
+        return raw.decode("utf-8", errors="replace")
 
     def bytes_per_token(self, text):
         ids = self.encode(text, add_bos=False)
@@ -132,7 +132,7 @@ class BPETokenizer:
         path = Path(path)
         path.parent.mkdir(parents=True, exist_ok=True)
         payload = {
-            "merges": [{"a": a, "b": b, "id": i} for (a, b), i in self.merges.items()],
+            "merges": [{"a": first, "b": second, "id": token_id} for (first, second), token_id in self.merges.items()],
             "special_tokens": self.special_to_id,
         }
         path.write_text(json.dumps(payload), encoding="utf-8")
@@ -140,15 +140,15 @@ class BPETokenizer:
     @classmethod
     def load(cls, path) -> "BPETokenizer":
         payload = json.loads(Path(path).read_text(encoding="utf-8"))
-        tok = cls()
+        tokenizer = cls()
         merges = {}
-        vocab = {i: bytes([i]) for i in range(256)}
+        vocab = {byte: bytes([byte]) for byte in range(256)}
         for item in payload["merges"]:
             pair = (item["a"], item["b"])
             merges[pair] = item["id"]
             vocab[item["id"]] = vocab[item["a"]] + vocab[item["b"]]
-        tok.merges = merges
-        tok.vocab = vocab
-        tok.special_to_id = {k: int(v) for k, v in payload["special_tokens"].items()}
-        tok.id_to_special = {i: t for t, i in tok.special_to_id.items()}
-        return tok
+        tokenizer.merges = merges
+        tokenizer.vocab = vocab
+        tokenizer.special_to_id = {name: int(token_id) for name, token_id in payload["special_tokens"].items()}
+        tokenizer.id_to_special = {token_id: name for name, token_id in tokenizer.special_to_id.items()}
+        return tokenizer

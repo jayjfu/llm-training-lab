@@ -13,48 +13,14 @@ Every stage of the LLM pipeline is implemented here as runnable code, then used 
 - **Compare:** deep dives that contrast methods, papers, and frontier model reports.
 
 ### Lab Roadmap
-- [x] Prototype: end-to-end mini pipeline (tokenizer → pretrain → SFT → RL → eval)
+- [x] Prototype: end-to-end mini pipeline (tokenizer → pretrain → SFT → RL)
 - [ ] Baselines: a stronger reference setup for each stage, with logged results
 - [ ] Ablations: architecture, optimizers, schedules, data mixtures, hyperparameters
 - [ ] Comparisons: SFT vs. preference optimization vs. RL vs. distillation; inference and training efficiency techniques
 - [ ] Deep research: write-ups that connect experiment results with papers and frontier tech reports
 
 ### Prototype
-**Model Architecture:** A mini GPT-2 (inspired by nanochat).
-- Positions: RoPE
-- Norm: RMSNorm
-- Attention: MHA or GQA
-- MLP: ReLU²
-- Embed / head: untied
-- Optimizer: Muon on matrices + AdamW on embeddings and lm_head
-
-**Tokenizer:** Regex-pretokenized BPE, byte pairs merged by frequency up to vocab_size.
-```bash
-python tok_train.py --vocab-size 1024
-```
-
-**Document Packing:** Best-fit into a row of exactly seq_len, place the largest document that still fits, and crop the shortest only if nothing fits.
-
-**Training:** Next-token pretrain on documents, --depth as size dial. Muon on matrices, AdamW on the rest.
-```bash
-python train.py --depth 2 --steps 400 --batch-size 8 --seq-len 128
-```
-
-**SFT:** Post-training with loss only on assistant tokens.
-```bash
-python train_sft.py --steps 100 --seq-len 64
-```
-
-**Reinforcement Learning:** Post-training with a minimal GRPO update on a verified reward.
-```bash
-python rl.py
-```
-
-**Simple Eval:** generative (GSM8K) and categorical (MMLU) evaluation, backend by vLLM
-```bash
-python eval.py --task gsm8k --model Qwen/Qwen2.5-0.5B-Instruct --max-problems 50
-python eval.py --task mmlu --model Qwen/Qwen2.5-0.5B-Instruct --max-problems 100
-```
+A toy end-to-end pipeline (tokenizer → pretrain → SFT → RL) that runs on a CPU in minutes. Details in [prototype](prototype/README.md).
 
 ## Pretraining
 
@@ -65,6 +31,7 @@ WIP: Baseline model + all results in [RESULTS.md](01-pretraining/src/baseline/RE
 - Data: cleaning, mixture ratio
 - Training: AdamW + scheduler (cosine/WSD)
 - Hyperparameter: learning rate, batch size
+- Scaling laws: [paper-reproduction](01-pretraining/scaling_laws/paper-reproductions.md)
 
 ## Midtraining
 TODO:
@@ -90,13 +57,13 @@ DPO and GRPO each have a TRL version and a from-scratch version.
 <!-- results:end -->
 
 ## Evaluation
-Run a full local evaluation suite with Inspect AI and vLLM:
+Run a full local evaluation suite with Inspect AI and vLLM, or a quick GSM8K / MMLU check:
 ```bash
 bash run_eval_suit.sh
+python simple_eval.py --task gsm8k --model Qwen/Qwen2.5-0.5B-Instruct --max_problems 50
 ```
 
 TODO:
-- Scaling laws: [paper-reproduction](04-evaluation/scaling_laws/paper-reproductions.md)
 - benchmarks, inference throughout
 
 ## Optimization

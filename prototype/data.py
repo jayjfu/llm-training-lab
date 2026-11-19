@@ -1,6 +1,45 @@
+import json
+import urllib.request
 from dataclasses import dataclass
 
 import torch
+
+SHAKESPEARE_URL = "https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt"
+
+
+def download_shakespeare(dest):
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    if not dest.exists():
+        urllib.request.urlretrieve(SHAKESPEARE_URL, dest)
+    return dest
+
+
+def split_documents(text, min_chars=80):
+    blocks = (block.strip() for block in text.split("\n\n"))
+    return [block for block in blocks if len(block) >= min_chars]
+
+
+def write_shards(docs, out_dir, val_frac=0.05):
+    out_dir.mkdir(parents=True, exist_ok=True)
+    n_val = int(len(docs) * val_frac)
+    paths = {}
+    for name, rows in {"train": docs[:-n_val], "val": docs[-n_val:]}.items():
+        path = out_dir / f"{name}_000.jsonl"
+        with path.open("w", encoding="utf-8") as file:
+            for text in rows:
+                file.write(json.dumps({"text": text}, ensure_ascii=False) + "\n")
+        paths[name] = path
+    return paths["train"], paths["val"]
+
+
+def read_shard(path):
+    with path.open(encoding="utf-8") as file:
+        return [json.loads(line)["text"] for line in file if line.strip()]
+
+
+def prepare_shakespeare(shard_dir):
+    text = download_shakespeare(shard_dir / "input.txt").read_text(encoding="utf-8")
+    return write_shards(split_documents(text), shard_dir)
 
 
 @dataclass
@@ -42,20 +81,17 @@ def best_fit_pack(docs, seq_len, buffer_size=32):
         row = []
         remaining = seq_len
         while remaining > 0 and buffer:
-            fits = [i for i, doc in enumerate(buffer) if len(doc) <= remaining]
+            fits = [index for index, doc in enumerate(buffer) if len(doc) <= remaining]
             if fits:
-                choice = max(fits, key=lambda i: len(buffer[i]))
-                doc = buffer.pop(choice)
+                doc = buffer.pop(max(fits, key=lambda index: len(buffer[index])))
                 row.extend(doc)
                 remaining -= len(doc)
-                stats.docs_placed += 1
             else:
-                choice = min(range(len(buffer)), key=lambda i: len(buffer[i]))
-                doc = buffer.pop(choice)
+                doc = buffer.pop(min(range(len(buffer)), key=lambda index: len(buffer[index])))
                 row.extend(doc[:remaining])
                 stats.tokens_cropped += len(doc) - remaining
-                stats.docs_placed += 1
                 remaining = 0
+            stats.docs_placed += 1
         if len(row) < seq_len:
             break
         rows.append(row)
@@ -74,12 +110,13 @@ class PackedLoader:
         self.device = device
 
     def next_batch(self):
-        xs, ys = [], []
+        inputs, targets = [], []
         for _ in range(self.batch_size):
             row = self.rows[self.pos % len(self.rows)]
             self.pos += 1
-            xs.append(row[:-1])
-            ys.append(row[1:])
-        x = torch.tensor(xs, dtype=torch.long, device=self.device)
-        y = torch.tensor(ys, dtype=torch.long, device=self.device)
-        return x, y
+            inputs.append(row[:-1])
+            targets.append(row[1:])
+        return (
+            torch.tensor(inputs, dtype=torch.long, device=self.device),
+            torch.tensor(targets, dtype=torch.long, device=self.device),
+        )

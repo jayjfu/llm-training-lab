@@ -28,8 +28,7 @@ def rms_norm(x):
 
 
 def apply_rope(x, cos, sin):
-    d = x.size(-1)
-    x1, x2 = x[..., : d // 2], x[..., d // 2 :]
+    x1, x2 = x.chunk(2, dim=-1)
     y1 = x1 * cos - x2 * sin
     y2 = x2 * cos + x1 * sin
     return torch.cat([y1, y2], dim=-1)
@@ -38,8 +37,8 @@ def apply_rope(x, cos, sin):
 def precompute_rope(seq_len, head_dim, base=10000.0):
     half = head_dim // 2
     inv_freq = 1.0 / (base ** (torch.arange(0, half, dtype=torch.float32) / half))
-    t = torch.arange(seq_len, dtype=torch.float32)
-    freqs = torch.outer(t, inv_freq)  # (T, D/2)
+    positions = torch.arange(seq_len, dtype=torch.float32)
+    freqs = torch.outer(positions, inv_freq)  # (T, D/2)
     return freqs.cos()[None, :, None, :], freqs.sin()[None, :, None, :]
 
 
@@ -59,10 +58,10 @@ class CausalSelfAttention(nn.Module):
         self.w_proj = nn.Linear(config.n_embd, config.n_embd, bias=False)
 
     def forward(self, x, cos_sin):
-        B, T, _ = x.shape
-        q = self.w_q(x).view(B, T, self.n_head, self.head_dim)
-        k = self.w_k(x).view(B, T, self.n_kv_head, self.head_dim)
-        v = self.w_v(x).view(B, T, self.n_kv_head, self.head_dim)
+        batch, seq, _ = x.shape
+        q = self.w_q(x).view(batch, seq, self.n_head, self.head_dim)
+        k = self.w_k(x).view(batch, seq, self.n_kv_head, self.head_dim)
+        v = self.w_v(x).view(batch, seq, self.n_kv_head, self.head_dim)
 
         q, k = rms_norm(q), rms_norm(k)
         cos, sin = cos_sin
@@ -72,7 +71,7 @@ class CausalSelfAttention(nn.Module):
         k = k.transpose(1, 2)
         v = v.transpose(1, 2)
         y = F.scaled_dot_product_attention(q, k, v, is_causal=True, enable_gqa=self.q_per_kv > 1)
-        y = y.transpose(1, 2).contiguous().view(B, T, -1)
+        y = y.transpose(1, 2).contiguous().view(batch, seq, -1)
         return self.w_proj(y)
 
 
@@ -127,9 +126,9 @@ class GPT(nn.Module):
             torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
 
     def forward(self, input_ids, targets=None, loss_mask=None):
-        B, T = input_ids.shape
-        assert T <= self.config.sequence_len
-        cos_sin = self.cos[:, :T], self.sin[:, :T]
+        seq = input_ids.size(1)
+        assert seq <= self.config.sequence_len
+        cos_sin = self.cos[:, :seq], self.sin[:, :seq]
 
         x = self.embed_tokens(input_ids)
         x = rms_norm(x)
@@ -159,8 +158,8 @@ class GPT(nn.Module):
             logits, _ = self(input_ids) # (B, T, vocab_size)
             logits = logits[:, -1, :] / max(temperature, 1e-6) # (B, vocab_size)
             if top_k is not None:
-                v, _ = torch.topk(logits, min(top_k, logits.size(-1)))
-                logits = logits.masked_fill(logits < v[:, [-1]], float("-inf"))
+                top_values, _ = torch.topk(logits, min(top_k, logits.size(-1)))
+                logits = logits.masked_fill(logits < top_values[:, [-1]], float("-inf"))
             probs = F.softmax(logits, dim=-1)
             next_id = torch.multinomial(probs, num_samples=1)
             input_ids = torch.cat([input_ids, next_id], dim=1)
