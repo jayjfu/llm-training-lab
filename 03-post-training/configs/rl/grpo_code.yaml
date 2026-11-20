@@ -1,0 +1,13 @@
+defaults: grpo_math.yaml
+task: code
+dataset: KodCode/KodCode-Light-RL-10K
+rewards: [code_pass]
+train:
+  max_completion_length: 1024
+  micro_batch_size: 1
+  loss_type: grpo
+  scale_rewards: true
+  log_rollouts_every: 10
+  use_vllm: true
+  vllm_gpu_memory_utilization: 0.12
+  vllm_max_model_len: 4096

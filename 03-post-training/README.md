@@ -1,28 +1,25 @@
-## Introduction
-This part turns Qwen3.5-0.8B-Base into an instruct model with SFT, DPO, GRPO and distillation. Each run is one config, and every run is evaluated on the same benchmarks.
+# 03 - Post-training
 
-TODO: The roadmap has three stages.
-1. Build each method with the Hugging Face stack (TRL, PEFT and Unsloth).
-2. Reimplement each method from scratch without TRL.
-3. Explore Megatron-style parallelism and efficiency.
+This part turns Qwen3.5-0.8B-Base into an instruct model with SFT, DPO, GRPO and distillation. Each run is one config, and all runs share the same benchmarks.
 
 ## Project Structure
 ```
 03-post-training/
-├── configs/<stage>/<run_name>.yaml
+├── configs/<stage>/<run_name>.yaml  # one config per run: sft, preference, rl
 ├── src/
-│   ├── common.py
-│   ├── data.py
-│   ├── rewards.py
-│   ├── sft_trl.py
-│   ├── grpo_trl.py
-│   ├── grpo.py
-│   ├── make_pairs.py
-│   ├── dpo_trl.py
-│   └── dpo.py
-└── scripts/
-    ├── eval_leaderboard.sh
-    └── collect_results.py
+│   ├── common.py                    # config loading, model I/O, log-probs
+│   ├── data.py                      # SFT, MATH and KodCode datasets
+│   ├── rewards.py                   # math and code rewards
+│   ├── sandbox.py                   # runs model code with limits
+│   ├── code_eval.py                 # HumanEval+ and MBPP+ eval
+│   ├── sft_trl.py                   # SFT with TRL
+│   ├── grpo.py                      # GRPO, optional vLLM rollouts
+│   ├── make_pairs.py                # DPO pairs from SFT samples
+│   └── dpo.py                       # DPO
+├── scripts/
+│   ├── eval_leaderboard.sh          # evaluate all runs
+│   └── collect_results.py           # fill the results tables
+└── RESULTS.md                       # all runs
 ```
 
 ## SFT
@@ -32,28 +29,49 @@ python src/sft_trl.py --configs configs/sft/*.yaml [--resume]
 ```
 
 ## Preference
-We train DPO from the SFT checkpoint on the MATH train split. It shares the sampling settings and reward with RL, so the two are comparable.
+We train DPO from the SFT checkpoint on MATH. It shares sampling settings and rewards with RL.
 ```bash
 python src/make_pairs.py --configs configs/preference/dpo_math.yaml
-python src/dpo_trl.py --configs configs/preference/dpo_trl_math.yaml
 python src/dpo.py --configs configs/preference/dpo_math.yaml
 ```
 
 ## RL
-We train GRPO from the SFT checkpoint on the MATH train split.
+We train GRPO from the SFT checkpoint on MATH and on KodCode-Light-RL-10K (code, CC BY-NC 4.0).
 ```bash
-python src/grpo_trl.py --configs configs/rl/grpo_trl_math*.yaml
 python src/grpo.py --configs configs/rl/grpo_math.yaml
+python src/grpo.py --configs configs/rl/grpo_code.yaml
 ```
+
+Code rewards run the last ```python block against the problem's tests in the sandbox:
+- `code_pass`: 1 if all tests pass.
+- `code_fraction`: share of tests passed.
+- `code_format`: 0.1 for a code block.
+
+Train options:
+- `scale_rewards`: divide advantages by the group std.
+- `epsilon_high`: upper clip bound (default: `epsilon`).
+- `micro_batch_size`: completions per backward pass. It saves memory without changing the update.
+- `use_vllm`: generate rollouts with vLLM in the same process (written for vLLM 0.29). Weights sync after every step.
+- `log_rollouts_every`: write completions, rewards and test results to `rollouts.jsonl` every N steps.
+
+With vLLM, `vllm_logprob_gap` in `metrics.jsonl` should stay small. Growth means vLLM has stale weights. If memory is tight, set `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`.
 
 ## Distillation
 TODO: Add distillation from a larger teacher model.
 
 ## Evaluation
-The script evaluates all runs by default and skips finished tasks.
+The script evaluates all runs and skips finished tasks. Coding tasks need `pip install evalplus pytest`.
 ```bash
 bash scripts/eval_leaderboard.sh [run_name ...]
+python src/code_eval.py --model ckpts/<run>/final --task humaneval_plus --output_dir results/<run>/humaneval_plus
 ```
+
+`code_eval.py` scores HumanEval+ and MBPP+ with the official EvalPlus checker. Use `--no_chat_template` for base models and `--num_samples` for pass@k.
+
+## Sandbox
+`src/sandbox.py` runs model code in a separate process with time, memory and file-size limits, and without network when `unshare -rn` works. It does not stop code built to escape; use a container for that.
+
+Canonical solutions score the same as unsandboxed EvalPlus.
 
 ## Results
 The table shows the best run per stage on Open LLM Leaderboard v2. All runs are in [RESULTS.md](RESULTS.md), and more evaluations are in [04-evaluation](../04-evaluation/README.md).
@@ -65,8 +83,14 @@ The table shows the best run per stage on Open LLM Leaderboard v2. All runs are 
 | **Instruct** | Qwen/Qwen3.5-0.8B | 53.97 (+28.09) | 42.72 (+4.62) | 12.99 (+5.66) | 33.76 (-6.96) | 16.27 (-8.57) | 26.01 (-3.18) | 30.95 (+3.28) |
 <!-- results:end -->
 
+Coding benchmarks, pass@1 (greedy):
+
+<!-- coding:start -->
+TODO: run `bash scripts/eval_leaderboard.sh` to fill this table.
+<!-- coding:end -->
+
 ## Benchmarks
-1. Coding: TODO: Add HumanEval+ and MBPP+, and later LiveCodeBench.
+1. Coding: We use HumanEval+ and MBPP+ (EvalPlus). TODO: Add LiveCodeBench.
 2. Agentic: We use IFEval. TODO: Add IFBench and BFCL.
 3. Reasoning, knowledge and multimodal:
    - Reasoning: We use MuSR, MATH Lvl-5 and BBH. TODO: Add MATH-500 and GSM8K.

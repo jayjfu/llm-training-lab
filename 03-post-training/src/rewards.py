@@ -1,6 +1,11 @@
+import re
+
 from math_verify import parse, verify
 
+from sandbox import run_tests_batch
+
 BOXED = "\\boxed{"
+CODE_BLOCK = re.compile(r"```(?:python|py)?[ \t]*\n(.*?)```", re.S)
 
 
 def extract_boxed(text):
@@ -41,4 +46,39 @@ def format_reward(completions, **kwargs):
     return [0.5 if extract_boxed(completion_text(completion)) else 0.0 for completion in completions]
 
 
-REWARD_FUNCS = [accuracy_reward, format_reward]
+def extract_code(text):
+    blocks = CODE_BLOCK.findall(text)
+    blocks = [block for block in blocks if "def " in block] or blocks
+    return blocks[-1] if blocks else ""
+
+
+def test_results(completions, ground_truth):
+    codes = [extract_code(completion_text(completion)) for completion in completions]
+    return run_tests_batch(codes, ground_truth)
+
+
+def code_pass_reward(completions, ground_truth, **kwargs):
+    return [1.0 if results and all(results) else 0.0 for results in test_results(completions, ground_truth)]
+
+
+def code_fraction_reward(completions, ground_truth, **kwargs):
+    return [sum(results) / len(results) if results else 0.0 for results in test_results(completions, ground_truth)]
+
+
+def code_format_reward(completions, **kwargs):
+    return [0.1 if extract_code(completion_text(completion)) else 0.0 for completion in completions]
+
+
+REWARDS = {
+    "math_accuracy": accuracy_reward,
+    "math_format": format_reward,
+    "code_pass": code_pass_reward,
+    "code_fraction": code_fraction_reward,
+    "code_format": code_format_reward,
+}
+DEFAULT_REWARDS = {"math": ["math_accuracy", "math_format"], "code": ["code_pass"]}
+
+
+def reward_funcs(config):
+    names = config.get("rewards") or DEFAULT_REWARDS[config.get("task", "math")]
+    return [REWARDS[name] for name in names]

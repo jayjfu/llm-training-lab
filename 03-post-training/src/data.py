@@ -4,6 +4,7 @@ from common import pairs_path
 from rewards import extract_boxed
 
 MATH_PROMPT = "Solve the following math competition problem step by step. Put the final answer inside \\boxed{}.\n\n"
+CODE_PROMPT = "Solve the following programming problem in Python. Put the complete solution in a single ```python code block.\n\n"
 
 
 def math_dataset(name, levels):
@@ -17,6 +18,24 @@ def math_dataset(name, levels):
         remove_columns=raw.column_names,
     )
     return dataset.filter(lambda example: example["ground_truth"] != "")
+
+
+def code_dataset(name):
+    # KodCode-style rows: `test` is a pytest file importing from `solution`
+    raw = load_dataset(name, split="train")
+
+    def to_example(example):
+        declaration = example["test_info"][0]["function_declaration"].strip()
+        content = f"{CODE_PROMPT}{example['question'].strip()}\n\nYour solution must define `{declaration}`"
+        return {"prompt": [{"role": "user", "content": content}], "ground_truth": example["test"]}
+
+    return raw.map(to_example, remove_columns=raw.column_names)
+
+
+def task_dataset(config):
+    if config.get("task", "math") == "code":
+        return code_dataset(config["dataset"])
+    return math_dataset(config["dataset"], config["levels"])
 
 
 def split_turns(batch):

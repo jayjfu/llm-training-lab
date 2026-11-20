@@ -71,6 +71,9 @@ def save_final(model, processor, run_dir):
 def completion_logprobs(model, sequences, attention_mask, completion_length):
     with torch.autocast(sequences.device.type, dtype=torch.bfloat16):
         logits = model(input_ids=sequences, attention_mask=attention_mask, logits_to_keep=completion_length + 1).logits
-    logits = logits[:, :-1, :].float()
     targets = sequences[:, -completion_length:]
-    return logits.gather(-1, targets.unsqueeze(-1)).squeeze(-1) - logits.logsumexp(dim=-1)
+    # one row at a time in float32: never holds a float32 copy of the whole [batch, length, vocab] logits
+    return torch.stack([
+        row_logits[:-1].float().log_softmax(dim=-1).gather(-1, row_targets.unsqueeze(-1)).squeeze(-1)
+        for row_logits, row_targets in zip(logits, targets)
+    ])

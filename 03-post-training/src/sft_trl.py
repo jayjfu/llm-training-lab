@@ -1,8 +1,8 @@
 from peft import LoraConfig
-from transformers import AutoProcessor, AutoTokenizer, GenerationConfig
+from transformers import AutoProcessor, AutoTokenizer
 from trl import SFTConfig, SFTTrainer
 
-from common import load_model, make_run_dir, parse_args, save_final
+from common import chat_generation_config, load_model, make_run_dir, parse_args, save_final
 from data import sft_dataset
 
 
@@ -36,7 +36,7 @@ def train(config, resume=False):
     )
     trainer.train(resume_from_checkpoint=resume or None)
     model = trainer.model.merge_and_unload() if lora else trainer.model
-    model.generation_config = GenerationConfig.from_pretrained(config["instruct_model"])
+    model.generation_config = chat_generation_config(model, config["instruct_model"], tokenizer)
     save_final(model, AutoProcessor.from_pretrained(config["instruct_model"]), run_dir)
 
 

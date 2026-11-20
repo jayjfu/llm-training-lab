@@ -13,6 +13,7 @@ TASKS=(
   leaderboard_bbh
   leaderboard_math_hard
 )
+CODE_TASKS=(humaneval_plus mbpp_plus)
 
 runs=("$@")
 if [[ ${#runs[@]} -eq 0 ]]; then
@@ -42,6 +43,17 @@ for run in "${runs[@]}"; do
     cmd=(lm-eval run --model vllm --model_args "pretrained=${model_path},dtype=auto"
          --tasks "${task}" --batch_size auto --output_path "${out_dir}")
     [[ "${apply_chat}" == "true" ]] && cmd+=(--apply_chat_template --fewshot_as_multiturn)
+    "${cmd[@]}"
+  done
+
+  for task in "${CODE_TASKS[@]}"; do
+    out_dir="results/${run}/${task}"
+    if [[ -f "${out_dir}/results_code.json" ]]; then
+      echo "skip ${run}/${task}"
+      continue
+    fi
+    cmd=(python src/code_eval.py --model "${model_path}" --task "${task}" --output_dir "${out_dir}")
+    [[ "${apply_chat}" == "false" ]] && cmd+=(--no_chat_template)
     "${cmd[@]}"
   done
 done

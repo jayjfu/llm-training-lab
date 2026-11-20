@@ -6,14 +6,21 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parents[2]
-TASKS = {
-    "leaderboard_ifeval": ("IFEval", ["prompt_level_strict_acc,none", "inst_level_strict_acc,none"]),
-    "leaderboard_musr": ("MuSR", ["acc_norm,none"]),
-    "leaderboard_math_hard": ("MATH Lvl-5", ["exact_match,none"]),
-    "leaderboard_bbh": ("BBH", ["acc_norm,none"]),
-    "leaderboard_mmlu_pro": ("MMLU-Pro", ["acc,none"]),
-    "leaderboard_gpqa": ("GPQA", ["acc_norm,none"]),
-}
+LEADERBOARD_COLUMNS = [
+    ("leaderboard_ifeval", "IFEval", ["prompt_level_strict_acc,none", "inst_level_strict_acc,none"]),
+    ("leaderboard_musr", "MuSR", ["acc_norm,none"]),
+    ("leaderboard_math_hard", "MATH Lvl-5", ["exact_match,none"]),
+    ("leaderboard_bbh", "BBH", ["acc_norm,none"]),
+    ("leaderboard_mmlu_pro", "MMLU-Pro", ["acc,none"]),
+    ("leaderboard_gpqa", "GPQA", ["acc_norm,none"]),
+]
+CODING_COLUMNS = [
+    ("humaneval_plus", "HumanEval", ["pass@1_base,none"]),
+    ("humaneval_plus", "HumanEval+", ["pass@1,none"]),
+    ("mbpp_plus", "MBPP", ["pass@1_base,none"]),
+    ("mbpp_plus", "MBPP+", ["pass@1,none"]),
+]
+TABLES = {"results": LEADERBOARD_COLUMNS, "coding": CODING_COLUMNS}
 STAGES = ["base", "sft", "preference", "rl", "distillation", "instruct"]
 STAGE_LABELS = {"sft": "SFT", "rl": "RL"}
 MODEL_NAMES = {"base": "Qwen/Qwen3.5-0.8B-Base", "instruct": "Qwen/Qwen3.5-0.8B"}
@@ -42,18 +49,20 @@ def run_stage(run, ckpts_dir):
     return yaml.safe_load(run_config.read_text()).get("stage", "other") if run_config.exists() else "other"
 
 
-def collect(results_dir, ckpts_dir):
+def collect(results_dir, ckpts_dir, columns):
     rows = []
     for run_dir in sorted(path for path in results_dir.iterdir() if path.is_dir()):
-        scores = [task_score(run_dir, task, metrics) for task, (_, metrics) in TASKS.items()]
+        scores = [task_score(run_dir, task, metrics) for task, _, metrics in columns]
+        if all(score is None for score in scores):
+            continue
         average = None if None in scores else sum(scores) / len(scores)
         rows.append({"run": run_dir.name, "stage": run_stage(run_dir.name, ckpts_dir), "scores": scores + [average]})
     return sorted(rows, key=lambda row: (STAGES.index(row["stage"]) if row["stage"] in STAGES else len(STAGES), row["run"]))
 
 
-def render(rows):
+def render(rows, columns):
     base = next((row["scores"] for row in rows if row["run"] == "base"), None)
-    header = ["Stage", "Model"] + [column for column, _ in TASKS.values()] + ["Avg"]
+    header = ["Stage", "Model"] + [column for _, column, _ in columns] + ["Avg"]
     lines = ["| " + " | ".join(header) + " |", "|" + "---|" * len(header)]
     for row in rows:
         cells = []
@@ -78,9 +87,9 @@ def best_per_stage(rows):
     return [row for row in rows if best.get(row["stage"]) is row]
 
 
-def replace_block(path, table):
+def replace_block(path, table, marker):
     text = path.read_text()
-    pattern = r"(<!-- results:start -->\n).*?(<!-- results:end -->)"
+    pattern = rf"(<!-- {marker}:start -->\n).*?(<!-- {marker}:end -->)"
     path.write_text(re.sub(pattern, lambda match: match.group(1) + table + "\n" + match.group(2), text, flags=re.S))
 
 
@@ -90,11 +99,12 @@ def main():
     parser.add_argument("--ckpts_dir", type=str, default=str(ROOT / "03-post-training/ckpts"))
     args = parser.parse_args()
 
-    rows = collect(Path(args.results_dir), Path(args.ckpts_dir))
-    replace_block(ROOT / "03-post-training/RESULTS.md", render(rows))
-    replace_block(ROOT / "03-post-training/README.md", render(best_per_stage(rows)))
-    replace_block(ROOT / "README.md", render(best_per_stage(rows)))
-    print(render(rows))
+    for marker, columns in TABLES.items():
+        rows = collect(Path(args.results_dir), Path(args.ckpts_dir), columns)
+        replace_block(ROOT / "03-post-training/RESULTS.md", render(rows, columns), marker)
+        replace_block(ROOT / "03-post-training/README.md", render(best_per_stage(rows), columns), marker)
+        replace_block(ROOT / "README.md", render(best_per_stage(rows), columns), marker)
+        print(render(rows, columns))
 
 
 if __name__ == "__main__":

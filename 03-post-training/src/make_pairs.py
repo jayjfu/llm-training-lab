@@ -3,8 +3,8 @@ import json
 from vllm import LLM, SamplingParams
 
 from common import pairs_path, parse_args
-from data import math_dataset
-from rewards import REWARD_FUNCS
+from data import task_dataset
+from rewards import reward_funcs
 
 
 def make_pairs(config):
@@ -14,7 +14,8 @@ def make_pairs(config):
         print(f"skip: {output_path} exists")
         return
 
-    dataset = math_dataset(config["dataset"], config["levels"])
+    dataset = task_dataset(config)
+    funcs = reward_funcs(config)
     llm = LLM(model=config["model"], dtype="bfloat16", seed=pairs_args["seed"])
     tokenizer = llm.get_tokenizer()
     prompts = [tokenizer.apply_chat_template(prompt, tokenize=False, add_generation_prompt=True) for prompt in dataset["prompt"]]
@@ -37,7 +38,7 @@ def make_pairs(config):
             samples = [sample.text for sample in output.outputs if sample.finish_reason == "stop"]
             if len(samples) < 2:
                 continue
-            per_func = [reward_func(samples, [example["ground_truth"]] * len(samples)) for reward_func in REWARD_FUNCS]
+            per_func = [reward_func(samples, ground_truth=[example["ground_truth"]] * len(samples)) for reward_func in funcs]
             rewards = [sum(values) for values in zip(*per_func)]
             best = max(range(len(samples)), key=rewards.__getitem__)
             worst = min(range(len(samples)), key=rewards.__getitem__)

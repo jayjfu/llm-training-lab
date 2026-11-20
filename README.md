@@ -46,10 +46,8 @@ WIP: We turn Qwen3.5-0.8B-Base into an instruct model. Details are in [03-post-t
 
 - SFT: We fine-tune on smol-smoltalk with full fine-tuning and LoRA.
 - Preference: We train DPO on MATH pairs sampled from the SFT model.
-- RL: We train GRPO on MATH and compare the `grpo`, `dapo` and `dr_grpo` losses.
+- RL: We train GRPO on MATH, and on KodCode with rewards from running tests in a sandbox.
 - Distillation: TODO.
-
-DPO and GRPO each have a TRL version and a from-scratch version.
 
 **Results:** The table shows the best run per stage.
 
@@ -59,6 +57,12 @@ DPO and GRPO each have a TRL version and a from-scratch version.
 | **Base** | Qwen/Qwen3.5-0.8B-Base | 25.88 | 38.10 | 7.33 | 40.72 | 24.84 | 29.19 | 27.68 |
 | **Instruct** | Qwen/Qwen3.5-0.8B | 53.97 (+28.09) | 42.72 (+4.62) | 12.99 (+5.66) | 33.76 (-6.96) | 16.27 (-8.57) | 26.01 (-3.18) | 30.95 (+3.28) |
 <!-- results:end -->
+
+Coding benchmarks, pass@1 (greedy):
+
+<!-- coding:start -->
+TODO: run `bash scripts/eval_leaderboard.sh` to fill this table.
+<!-- coding:end -->
 
 ## Evaluation
 Run a full local evaluation suite with Inspect AI and vLLM, or a quick GSM8K / MMLU check:
