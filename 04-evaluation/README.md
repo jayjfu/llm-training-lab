@@ -28,6 +28,6 @@ bash run_eval_suit.sh
 inspect view
 ```
 
-## Reference & Acknowledgement:
+## References
 
 - UKGovernmentBEIS/inspect_ai: [GitHub](https://github.com/UKGovernmentBEIS/inspect_ai)

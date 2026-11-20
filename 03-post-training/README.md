@@ -77,8 +77,15 @@ The table shows the best run per stage on Open LLM Leaderboard v2. All runs are 
 ## Others
 TODO: Document common failure modes such as reward hacking, KL collapse, length bias, eval contamination, verbosity bias and template mismatches.
 
-## Reference & Acknowledgement:
-
+## References
+**Code**
 - huggingface/trl: [GitHub](https://github.com/huggingface/trl)
 - allenai/open-instruct: [GitHub](https://github.com/allenai/open-instruct)
 - EleutherAI/lm-evaluation-harness: [GitHub](https://github.com/EleutherAI/lm-evaluation-harness)
+
+**Papers**
+- DeepSeek-R1, RL for reasoning (2025): [arXiv](https://arxiv.org/abs/2501.12948)
+- GRPO, DeepSeekMath (2024): [arXiv](https://arxiv.org/abs/2402.03300)
+- DPO, Direct Preference Optimization (2023): [arXiv](https://arxiv.org/abs/2305.18290)
+- InstructGPT, Training Language Models to Follow Instructions with Human Feedback (2022): [arXiv](https://arxiv.org/abs/2203.02155)
+- PPO, Proximal Policy Optimization Algorithms (2017): [arXiv](https://arxiv.org/abs/1707.06347)

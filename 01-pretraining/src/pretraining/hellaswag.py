@@ -8,8 +8,8 @@ import torch
 import torch.nn.functional as F
 from tqdm import tqdm
 
-from model import GPT, GPTConfig
-from tokenizer import load_tokenizer
+from pretraining.model import GPT, GPTConfig
+from pretraining.tokenizer import load_tokenizer
 
 ROOT = Path(__file__).resolve().parents[2]  # 01-pretraining
 HELLASWAG_URL = "https://raw.githubusercontent.com/rowanz/hellaswag/master/data/hellaswag_val.jsonl"

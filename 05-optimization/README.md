@@ -1,10 +1,33 @@
-## Introduction
-TODO: inference throughout optimization (tokens/s) + training efficiency
+# 05 - Optimization
 
-1. inference optimization: 
-  - kv cache , pagedAttention, quantization, flashAttention, GQA...
-2. training efficiency:
-  - mixed precision, torch.compile, fused kernels, activation checkpointing, distributed training...
+Hands-on LLM optimization in two separate parts: inference speed and training efficiency. Every step is measured against the previous one.
+
+## Project Structure
+```
+05-optimization/
+├── inference/
+│   ├── src/fast_inference/   # model with KV caches, decoding strategies, benchmark
+│   └── RESULTS.md            # latency and throughput per step
+└── training/                 # speedrun ladder (WIP)
+```
+Both parts use the checkpoints and FineWeb data from [01-pretraining](../01-pretraining/README.md).
+
+## Inference Speed
+Make decoding of our GPT-2 124M fast, then compare with vLLM and SGLang. Details: [inference](inference/README.md).
+
+- [x] Naive decoding, KV cache, static KV cache, `torch.compile`, CUDA graphs.
+- [ ] MHA vs GQA vs MQA (WIP).
+- [ ] Batched and continuous batching, paged KV cache (WIP).
+- [ ] Quantization: int8 / int4 weights, FP8, KV cache (WIP).
+- [ ] Speculative decoding with a 25M draft model (WIP).
+- [ ] vLLM and SGLang on Qwen3.5-0.8B (WIP).
+
+## Training Efficiency
+A speedrun: wall-clock time to 3.50 FineWeb val loss with a 124M model, starting from the 01-pretraining baseline (4.6 h). Details: [training](training/README.md).
+
+- [ ] Systems: TF32, bf16 weights, fused AdamW, async data loading, `torch.compile`, faster attention (WIP).
+- [ ] Algorithms: modded-nanogpt's architecture, optimizer and schedule tricks (WIP).
+- [ ] Kernels and precision: fused Triton kernels, FP8 matmuls, CUDA graphs (WIP).
 
 ## References
 
@@ -13,9 +36,9 @@ TODO: inference throughout optimization (tokens/s) + training efficiency
 - KellerJordan/modded-nanogpt: [GitHub](https://github.com/KellerJordan/modded-nanogpt)
 - pytorch/torchtitan: [GitHub](https://github.com/pytorch/torchtitan), TorchTitan (2024): [arXiv](https://arxiv.org/abs/2410.06511)
 - The Ultra-Scale Playbook (2025): [Hugging Face](https://huggingface.co/spaces/nanotron/ultrascale-playbook)
+- How to Scale Your Model (2025): [Book](https://jax-ml.github.io/scaling-book/)
 
 **Kernels and precision**
-- Liger Kernel, fused Triton kernels for LLM training (2024): [arXiv](https://arxiv.org/abs/2410.10989)
 - FlashAttention-3 (2024): [arXiv](https://arxiv.org/abs/2407.08608)
 - FlashAttention-2 (2023): [arXiv](https://arxiv.org/abs/2307.08691)
 - FP8 Formats for Deep Learning (2022): [arXiv](https://arxiv.org/abs/2209.05433)
@@ -27,10 +50,12 @@ TODO: inference throughout optimization (tokens/s) + training efficiency
 - Megatron-LM, efficient large-scale training on GPU clusters (2021): [arXiv](https://arxiv.org/abs/2104.04473)
 - ZeRO, Memory Optimizations Toward Training Trillion Parameter Models (2019): [arXiv](https://arxiv.org/abs/1910.02054)
 - Megatron-LM, tensor parallelism (2019): [arXiv](https://arxiv.org/abs/1909.08053)
+- GPipe, pipeline parallelism (2018): [arXiv](https://arxiv.org/abs/1811.06965)
 - Activation checkpointing, Training Deep Nets with Sublinear Memory Cost (2016): [arXiv](https://arxiv.org/abs/1604.06174)
 
 ### Inference Speed
 **Code**
+- pytorch-labs/gpt-fast: [GitHub](https://github.com/pytorch-labs/gpt-fast)
 - vllm-project/vllm: [GitHub](https://github.com/vllm-project/vllm)
 - sgl-project/sglang: [GitHub](https://github.com/sgl-project/sglang)
 

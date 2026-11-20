@@ -6,11 +6,10 @@ python studies/architecture/ablations.py confirm --base_lr 6e-4 --variants muon 
 """
 import argparse
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
-
-import numpy as np
 
 ROOT = Path(__file__).resolve().parents[2]  # 01-pretraining
 SRC_DIR = ROOT / "src"
@@ -73,8 +72,9 @@ VARIANTS = {
 }
 
 
-def lr_name(value):
-    return np.format_float_scientific(value, trim="-", exp_digits=1, precision=2)
+def lr_name(value):  # 0.0005 -> "5e-4"
+    mantissa, exponent = f"{value:.2e}".split("e")
+    return f"{mantissa.rstrip('0').rstrip('.')}e{int(exponent)}"
 
 
 def is_done(run_name):
@@ -92,7 +92,8 @@ def run(run_name, flags, dry_run):
     command = [sys.executable, "-m", "pretraining.train", "--run_name", run_name, *flags.split()]
     print(" ".join(command[1:]))
     if not dry_run:
-        subprocess.run(command, cwd=SRC_DIR, check=True)
+        env = {name: value for name, value in os.environ.items() if name != "MKL_THREADING_LAYER"}  # conda MKL vs libgomp
+        subprocess.run(command, cwd=SRC_DIR, check=True, env=env)
 
 
 def sweep(size_prefix, variant_name, spec, base_lr, lr_mults, dry_run):

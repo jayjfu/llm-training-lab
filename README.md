@@ -1,6 +1,6 @@
 # LLM Training Lab
 
-### A hands-on lab for building, running, and comparing every stage of LLM training: pretraining, midtraining, post-training, evaluation, and optimization, plus a tracker of frontier models.
+### A hands-on lab for building, running, and comparing every stage of LLM training: pretraining, midtraining, post-training, evaluation, and optimization, plus notes and comparisons of frontier models.
 
 *(Work in Progress: This repository is currently under active development.)*
 
@@ -75,16 +75,16 @@ TODO:
 1. inference optimization: kv cache , pagedAttention, quantization, flashAttention, GQA, ...
 2. training efficiency: ...
 
-## Frontier Tracker
-Tech reports / blogs / papers
+## Frontier Models
+Notes and comparisons of frontier tech reports, blogs and papers. Key claims are verified in the stage folders. Details are in [00-frontier-models](00-frontier-models/README.md).
 
-Families: kimi/, qwen/deepseek/, glm/, llama/, gemini/, claude/, gpt/, ...
+Families: kimi/, qwen/, deepseek/, glm/, llama/, gemma/, claude/, gpt/, grok/
 
 ## Others
 Tokenizers, distributed training...
 
-## Reference & Acknowledgement:
-
+## References
+- Stanford CS336, Language Modeling from Scratch: [Course](https://cs336.stanford.edu/)
 - epfml/llm-baselines: [GitHub](https://github.com/epfml/llm-baselines)
 - labmlai/annotated_deep_learning_paper_implementations: [GitHub](https://github.com/labmlai/annotated_deep_learning_paper_implementations)
 - karpathy/nanochat: [GitHub](https://github.com/karpathy/nanochat)
